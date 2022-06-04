@@ -45,13 +45,13 @@ class TaSignals:
         df['bollinger_low'] = matp - 2*df['std']
         data = {'bollinger_low': df['bollinger_low'].iloc[-1], 'bollinger_high': df['bollinger_high'].iloc[-1]}
         data = [
-            {'key': 'bollinger_above_matp', 'value': 'Above bollinger matp' if (df[key].iloc[-1] > matp.iloc[-1] + 10) else False},
-            {'key': 'bollinger_below_matp', 'value': 'Below bollinger matp' if (df[key].iloc[-1] < matp.iloc[-1] - 10) else False},
-            {'key': 'bollinger_at_matp', 'value': 'At bollinger matp' if math.isclose(df[key].iloc[-1], matp.iloc[-1], abs_tol=10) else False},
-            {'key': 'below_bollinger_low', 'value': 'Below bollinger Low' if df[key].iloc[-1] < (df['bollinger_low'].iloc[-1] - 10) else False},
-            {'key': 'above_bollinger_high', 'value': 'Above bollinger high' if df[key].iloc[-1] > (df['bollinger_high'].iloc[-1] + 10) else False},
-            {'key': 'at_bollinger_low', 'value': 'At Bollinger low' if math.isclose(df[key].iloc[-1], df['bollinger_low'].iloc[-1], abs_tol=10) else False},
-            {'key': 'at_bollinger_high', 'value': 'At Bollinger high' if math.isclose(df[key].iloc[-1], df['bollinger_high'].iloc[-1], abs_tol=10) else False},
+            {'key': 'bollinger_above_matp', 'value': 'Above bollinger matp' if (df[key].iloc[-1] > matp.iloc[-1] + 25) else False},
+            {'key': 'bollinger_below_matp', 'value': 'Below bollinger matp' if (df[key].iloc[-1] < matp.iloc[-1] - 25) else False},
+            {'key': 'bollinger_at_matp', 'value': 'At bollinger matp' if math.isclose(df[key].iloc[-1], matp.iloc[-1], abs_tol=25) else False},
+            {'key': 'below_bollinger_low', 'value': 'Below bollinger Low' if df[key].iloc[-1] < (df['bollinger_low'].iloc[-1] - 25) else False},
+            {'key': 'above_bollinger_high', 'value': 'Above bollinger high' if df[key].iloc[-1] > (df['bollinger_high'].iloc[-1] + 25) else False},
+            {'key': 'at_bollinger_low', 'value': 'At Bollinger low' if math.isclose(df[key].iloc[-1], df['bollinger_low'].iloc[-1], abs_tol=25) else False},
+            {'key': 'at_bollinger_high', 'value': 'At Bollinger high' if math.isclose(df[key].iloc[-1], df['bollinger_high'].iloc[-1], abs_tol=25) else False},
         ]
         return data, df
 
@@ -96,9 +96,11 @@ class TaSignals:
 
     def rsi(self, df, key):
         df = self.get_rsi(df, key)
-
+        df['rsi_slope'] = df['rsi'].rolling(window=2).apply(self.get_slope, raw=True)
         data = {'rsi': df['rsi'].iloc[-1]}
         data = [
+            {'key': 'rsi_rising', 'value': 'RSI is rising' if df['rsi_slope'].iloc[-1] > 0 else False},
+            {'key': 'rsi_dropping', 'value': 'RSI is dropping' if df['rsi_slope'].iloc[-1]< 0 else False},
             {'key': 'rsi_oversold', 'value': 'RSI is oversold' if df['rsi'].iloc[-1] <= 30 and df['rsi'].iloc[-1] >= 20 else False},
             {'key': 'rsi_extremely_oversold', 'value': 'RSI is extremely oversold' if df['rsi'].iloc[-1] <= 20 else False},
             {'key': 'rsi_overbought', 'value': 'RSI is overbought' if df['rsi'].iloc[-1] >= 70  and df['rsi'].iloc[-1] <= 80 else False},
@@ -107,7 +109,15 @@ class TaSignals:
         return data, df
 
     def macd_slope(self, df, key):
-        df.ta.macd(close=key, fast=12, slow=26, signal=9, append=True)
+        k = df[key].ewm(span=12, adjust=False, min_periods=12).mean()
+        d = df[key].ewm(span=26, adjust=False, min_periods=26).mean()
+        macd = k - d
+        macd_s = macd.ewm(span=9, adjust=False, min_periods=9).mean()
+        macd_h = macd - macd_s
+        df['MACD_12_26_9'] = df.index.map(macd)
+        df['MACDs_12_26_9'] = df.index.map(macd_s)
+        df['MACDh_12_26_9'] = df.index.map(macd_h)
+        #df.ta.macd(close=key, fast=12, slow=26, signal=9, append=True)
         df['macd_slope'] = df['MACD_12_26_9'].rolling(window=2).apply(self.get_slope, raw=True)
         df['macd_sig_slope'] = df['MACDs_12_26_9'].rolling(window=2).apply(self.get_slope, raw=True)
         df['macd_hist_slope'] = df['MACDh_12_26_9'].rolling(window=2).apply(self.get_slope, raw=True)
@@ -115,8 +125,8 @@ class TaSignals:
         bullish_cross = math.isclose(df['MACD_12_26_9'].iloc[-1], df['MACDs_12_26_9'].iloc[-1], abs_tol=25) and df['macd_slope'].iloc[-1] > 0
         bearish_cross = math.isclose(df['MACD_12_26_9'].iloc[-1], df['MACDs_12_26_9'].iloc[-1], abs_tol=25) and df['macd_slope'].iloc[-1] < 0
         data = [
-            {'key': 'macd_rising', 'value': 'MACD is rising' if df['macd_slope'].iloc[-1] >= 8 else False},
-            {'key': 'macd_dropping', 'value': 'MACD is dropping' if df['macd_slope'].iloc[-1] <= 8 else False},
+            {'key': 'macd_rising', 'value': 'MACD is rising' if df['macd_slope'].iloc[-1] >= 0 else False},
+            {'key': 'macd_dropping', 'value': 'MACD is dropping' if df['macd_slope'].iloc[-1] <= 0 else False},
             {'key': 'bullish_macd_cross', 'value': 'Bullish MACD Crossover soon' if bullish_cross else False},
             {'key': 'bearish_macd_cross', 'value': 'Bearish MACD Crossover soon' if bearish_cross else False},
             {'key': 'macd_over_signal', 'value': 'MACD over Signal' if df['MACD_12_26_9'].iloc[-1] > df['MACDs_12_26_9'].iloc[-1] else False},
