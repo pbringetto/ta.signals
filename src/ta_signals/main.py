@@ -8,8 +8,8 @@ import math
 pd.options.mode.chained_assignment = None
 
 class TaSignals:
-    def __init__(self):
-        self.data = []
+    def __init__(self, window):
+        self.window = window
 
     def on_balance_volume(self, df, n, key):
         """Calculate On-Balance Volume for given data.
@@ -96,11 +96,13 @@ class TaSignals:
 
     def rsi(self, df, key):
         df = self.get_rsi(df, key)
-        df['rsi_slope'] = df['rsi'].rolling(window=2).apply(self.get_slope, raw=True)
+        df['rsi_slope'] = df['rsi'].rolling(window=self.window).apply(self.get_slope, raw=True)
         data = {'rsi': df['rsi'].iloc[-1]}
         data = [
-            {'key': 'rsi_rising', 'value': 'RSI is rising' if df['rsi_slope'].iloc[-1] > 0 else False},
-            {'key': 'rsi_dropping', 'value': 'RSI is dropping' if df['rsi_slope'].iloc[-1]< 0 else False},
+            {'key': 'rsi_rising', 'value': 'RSI is rising' if df['rsi_slope'].iloc[-1] > 0 and df['rsi_slope'].iloc[-1] < 10 else False},
+            {'key': 'rsi_rising_fast', 'value': 'RSI is rising fast' if df['rsi_slope'].iloc[-1] > 10 else False},
+            {'key': 'rsi_dropping', 'value': 'RSI is dropping' if df['rsi_slope'].iloc[-1] < 0 and df['rsi_slope'].iloc[-1] > 10 else False},
+            {'key': 'rsi_dropping_fast', 'value': 'RSI is dropping fast' if df['rsi_slope'].iloc[-1] < -10  else False},
             {'key': 'rsi_oversold', 'value': 'RSI is oversold' if df['rsi'].iloc[-1] <= 30 and df['rsi'].iloc[-1] >= 20 else False},
             {'key': 'rsi_extremely_oversold', 'value': 'RSI is extremely oversold' if df['rsi'].iloc[-1] <= 20 else False},
             {'key': 'rsi_overbought', 'value': 'RSI is overbought' if df['rsi'].iloc[-1] >= 70  and df['rsi'].iloc[-1] <= 80 else False},
@@ -118,15 +120,17 @@ class TaSignals:
         df['MACDs_12_26_9'] = df.index.map(macd_s)
         df['MACDh_12_26_9'] = df.index.map(macd_h)
         #df.ta.macd(close=key, fast=12, slow=26, signal=9, append=True)
-        df['macd_slope'] = df['MACD_12_26_9'].rolling(window=2).apply(self.get_slope, raw=True)
-        df['macd_sig_slope'] = df['MACDs_12_26_9'].rolling(window=2).apply(self.get_slope, raw=True)
-        df['macd_hist_slope'] = df['MACDh_12_26_9'].rolling(window=2).apply(self.get_slope, raw=True)
+        df['macd_slope'] = df['MACD_12_26_9'].rolling(window=self.window).apply(self.get_slope, raw=True)
+        df['macd_sig_slope'] = df['MACDs_12_26_9'].rolling(window=self.window).apply(self.get_slope, raw=True)
+        df['macd_hist_slope'] = df['MACDh_12_26_9'].rolling(window=self.window).apply(self.get_slope, raw=True)
         data = {'macd_slope': df['macd_slope'].iloc[-1], 'macd_signal': df['MACDs_12_26_9'].iloc[-1], 'macd_hist': df['MACDh_12_26_9'].iloc[-1]}
         bullish_cross = math.isclose(df['MACD_12_26_9'].iloc[-1], df['MACDs_12_26_9'].iloc[-1], abs_tol=25) and df['macd_slope'].iloc[-1] > 0
         bearish_cross = math.isclose(df['MACD_12_26_9'].iloc[-1], df['MACDs_12_26_9'].iloc[-1], abs_tol=25) and df['macd_slope'].iloc[-1] < 0
         data = [
-            {'key': 'macd_rising', 'value': 'MACD is rising' if df['macd_slope'].iloc[-1] >= 0 else False},
-            {'key': 'macd_dropping', 'value': 'MACD is dropping' if df['macd_slope'].iloc[-1] <= 0 else False},
+            {'key': 'macd_rising_fast', 'value': 'MACD is rising fast' if df['macd_slope'].iloc[-1] > 20 else False},
+            {'key': 'macd_rising', 'value': 'MACD is rising' if df['macd_slope'].iloc[-1] > 0  and df['macd_slope'].iloc[-1] < 20 else False},
+            {'key': 'macd_dropping', 'value': 'MACD is dropping' if df['macd_slope'].iloc[-1] < 0 and df['macd_slope'].iloc[-1] > -20 else False},
+            {'key': 'macd_dropping_fast', 'value': 'MACD is dropping fast' if df['macd_slope'].iloc[-1] < -20 else False},
             {'key': 'bullish_macd_cross', 'value': 'Bullish MACD Crossover soon' if bullish_cross else False},
             {'key': 'bearish_macd_cross', 'value': 'Bearish MACD Crossover soon' if bearish_cross else False},
             {'key': 'macd_over_signal', 'value': 'MACD over Signal' if df['MACD_12_26_9'].iloc[-1] > df['MACDs_12_26_9'].iloc[-1] else False},
@@ -172,7 +176,7 @@ class TaSignals:
         low_idx, high_idx = self.high_low_idx(df, key, low_window, high_window)
         lows, highs = df.iloc[low_idx].copy(), df.iloc[high_idx].copy()
         lows[f'{key}_lows_slope'] = lows[key].rolling(window=5).apply(self.get_slope, raw=True)
-        highs[f'{key}_highs_slope'] = highs[key].rolling(window=2).apply(self.get_slope, raw=True)
+        highs[f'{key}_highs_slope'] = highs[key].rolling(window=self.window).apply(self.get_slope, raw=True)
         return lows, highs
 
     def divergence(self, df, key):

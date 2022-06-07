@@ -1,7 +1,7 @@
 from .main import TaSignals
 
-def go(ohlc, key):
-    t = TaSignals()
+def go(ohlc, key, window=2):
+    t = TaSignals(window)
 
     ma_data, ohlc = t.ma(ohlc, key)
     ema_data, ohlc = t.ema(ohlc, key)
