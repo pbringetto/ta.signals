@@ -9,9 +9,10 @@ def go(ohlc, key, window=2):
     rsi_data, ohlc = t.rsi(ohlc, key)
     macd_data, ohlc = t.macd_slope(ohlc, key)
     div_data, ohlc = t.divergence(ohlc, key)
+    volume_data, ohlc = t.volume(ohlc, key)
     #obv_data, ohlc = t.on_balance_volume(ohlc, 5, key)
 
-    data = div_data + bollinger_data + macd_data + ma_data + ema_data + rsi_data
+    data = div_data + bollinger_data + macd_data + ma_data + ema_data + rsi_data + volume_data
 
     return data, ohlc
 

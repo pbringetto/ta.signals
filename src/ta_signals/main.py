@@ -36,6 +36,17 @@ class TaSignals:
                 }
         return data, df
 
+    def volume(self, df, key):
+        df['volume_slope'] = df['volume'].rolling(window=self.window).apply(self.get_slope, raw=True)
+        data = [
+            {'key': 'volume_rising', 'value': 'Volume is rising' if df['volume_slope'].iloc[-1] > 0 and df['volume_slope'].iloc[-1] < 5 else False},
+            {'key': 'volume_rising_fast', 'value': 'Volume is rising fast' if df['volume_slope'].iloc[-1] > 5 else False},
+            {'key': 'volume_dropping', 'value': 'Volume is dropping' if df['volume_slope'].iloc[-1] < 0 and df['volume_slope'].iloc[-1] > 5 else False},
+            {'key': 'volume_dropping_fast', 'value': 'Volume is dropping fast' if df['volume_slope'].iloc[-1] < -5  else False},
+        ]
+
+        return data, df
+
     def bollinger(self, df, key):
 
         tp = (df[key] + df['low'] + df['high'])/3
@@ -83,10 +94,12 @@ class TaSignals:
 
         data = {'ema20': df['ema20'].iloc[-1], 'ema50': df['ema50'].iloc[-1], 'ema100': df['ema100'].iloc[-1], 'ema200': df['ema200'].iloc[-1]}
         data = [
+            {'key': 'above_ema_8', 'value': 'Above 8 period exponential moving average' if df[key].iloc[-1] > df['ema8'].iloc[-1] else False},
             {'key': 'above_ema_20', 'value': 'Above 20 period exponential moving average' if df[key].iloc[-1] > df['ema20'].iloc[-1] else False},
             {'key': 'above_ema_50', 'value': 'Above 50 period exponential moving average' if df[key].iloc[-1] > df['ema50'].iloc[-1] else False},
             {'key': 'above_ema_100', 'value': 'Above 100 period exponential moving average' if df[key].iloc[-1] > df['ema100'].iloc[-1] else False},
             {'key': 'above_ema_200', 'value': 'Above 200 period exponential moving average' if df[key].iloc[-1] > df['ema200'].iloc[-1] else False},
+            {'key': 'below_ema_8', 'value': 'Below 8 period exponential moving average' if df[key].iloc[-1] > df['ema8'].iloc[-1] else False},
             {'key': 'below_ema_20', 'value': 'Below 20 period exponential moving average' if df[key].iloc[-1] > df['ema20'].iloc[-1] else False},
             {'key': 'below_ema_50', 'value': 'Below 50 period exponential moving average' if df[key].iloc[-1] > df['ema50'].iloc[-1] else False},
             {'key': 'below_ema_100', 'value': 'Below 100 period exponential moving average' if df[key].iloc[-1] > df['ema100'].iloc[-1] else False},
